@@ -29,8 +29,6 @@ border.data = bd %>%
          Measure = Measure %>% 
            factor() %>% 
            make.names())
-
-
 ```
 
 ## Modeling
@@ -58,13 +56,12 @@ PlotCoeffs = function(var.name, model = m, data = border.data, sort.vars = FALSE
   level.names = substr(coeff.names, nchar(var.name) + 1, nchar(coeff.names))
   coeff.table = data.frame("Name" = level.names, "Coeff" = var.coeffs)
   # return(coeff.table)
-  coeff.table %>% 
-    ggplot(aes(x = Name, y = Coeff)) + 
-    geom_bar(stat = "identity") + 
-    coord_flip() 
+  #coeff.table %>% 
+  #  ggplot(aes(x = Name, y = Coeff)) + 
+  #  geom_bar(stat = "identity") + 
+  #  coord_flip() 
   # do "April" not "MonthApril" 
   # incorporate intercept to get rid of negatives
-  
 }
 categ.vars = border.data %>% 
   select(Port.Name, Month, Measure) %>%
@@ -72,12 +69,64 @@ categ.vars = border.data %>%
 # for (var.name in categ.vars) {
 #   PlotCoeffs(var.name, m, border.data)
 # }
-PlotCoeffs("Port.Name", m, border.data)
-PlotCoeffs("Month", m, border.data)
-PlotCoeffs("Measure", m, border.data)
-PlotCoeffs("State", m2, border.data, sort.vars = TRUE)
+
+ports <- PlotCoeffs("Port.Name", m, border.data)
+ports %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "Ports") +
+    coord_flip() 
+
+months <- PlotCoeffs("Month", m, border.data)
+months %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "Months") +
+    coord_flip() 
+
+trans <- PlotCoeffs("Measure", m, border.data)
+trans %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "Transportation Type") +
+    coord_flip() 
+
+states <- PlotCoeffs("State", m2, border.data, sort.vars = TRUE)
+states %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "States") +
+    coord_flip() 
 ```
 
+```{r state_plots}
+border.data.ca <- border.data %>%
+  filter(State == "CA")
 
+border.data.tx <- border.data %>%
+  filter(State == "TX")
 
+border.data.mi <- border.data %>%
+  filter(State == "MI")
 
+ca <- PlotCoeffs("Port.Name", m, border.data.ca)
+ca %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "California Ports") +
+    coord_flip() 
+
+tx <- PlotCoeffs("Port.Name", m, border.data.tx)
+tx %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "Texas Ports") +
+    coord_flip() 
+
+mi <- PlotCoeffs("Port.Name", m, border.data.mi)
+mi %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "Michigan Ports") +
+    coord_flip() 
+```
