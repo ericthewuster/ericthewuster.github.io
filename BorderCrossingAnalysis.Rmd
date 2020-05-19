@@ -1,0 +1,144 @@
+---
+title: "Border Crossing Analysis (Jan 1996 - Feb 2020)"
+author: "Matt Kalin, Eric Wu, Adrian Ly"
+date: "5/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+## Introduction
+In this project, we will look to find out more information regarding border crossings. More specifically, we will find out the most popular months when border crossings occur, what the top states are for border crossings, and how border crossings are carried out (transportation type).
+The dataset that we use has data from January 1996 to February 2020.
+
+Border crossings has been a hot topic in politics, and will continue to be into the forseeable future. This project aims to objectively gather relevant data needed for policy decisions, or simply just as informative statistics. 
+
+We progress through the fundamentals of data science first by gathering and importing the data, tidying/extracting the data, creating models for the data, plotting the models for better and easier visual comprehension, and lastly summarizing the findings of the project.
+
+## Importing the data
+The data was downloaded from https://www.kaggle.com/divyansh22/us-border-crossing-data?select=Border_Crossing_Entry_Data.csv.  If you have a Kaggle account (they are free and only take a minute to set up), you can download the data as a csv by clicking a button at the top right of the page. I then read it into R by reading the csv file. 
+```{r import}
+bd = read.csv("/Users/Eric W/Documents/ERIC_COMP/UMD/UMD Courses/Spring 2020/CMSC320/Projects/final/Border_Crossing_Entry_Data.csv")
+```
+
+## Data tidying
+We first extracting the month, year, and day of the week and store them as variables to be used later.
+```{r tidy}
+library(dplyr)
+border.data = bd %>% 
+  mutate(Date = as.Date(Date, format = "%m/%d/%Y"), 
+         Weekday = weekdays(Date), 
+         Month = months(Date),
+         Year = as.numeric(format(Date, "%Y")), 
+         Measure = Measure %>% 
+           factor() %>% 
+           make.names())
+```
+
+## Modeling
+We want to create a model that predicts the number of people who cross the border
+```{r linmod}
+m = lm(Value ~ Port.Name + Month + Year + Measure, data = border.data)
+m2 = lm(Value ~ State + Month + Year + Measure, data = border.data)
+# day of week found to be insignificant 
+```
+
+## Plotting the Models
+First we want to plot the data compared to the average border crossings, based on port/entry name, months, transportation type, and state. This will give us a better understanding of which ports of entry are more popular, which months are more popular, which transportation type is more popular, and which states are more popular for entry.
+```{r plots, include=TRUE}
+PlotCoeffs = function(var.name, model = m, data = border.data, sort.vars = FALSE){
+  coeff.names = paste0(var.name, unique(rev(data[, var.name]))) # reversed because the oldest entries are at the bottom of the dataset 
+  if(sort.vars){
+    coeff.names = sort(coeff.names)
+  }
+  all.coeffs = model$coefficients
+  var.coeffs = model$coefficients[coeff.names] %>% na.omit()
+  baseline = setdiff(coeff.names, names(var.coeffs))
+  # base.value = all.coeffs["(Intercept)"] - all.coeffs["Year"] * mean(data$Year)
+  var.coeffs[baseline] = 0
+  var.coeffs = var.coeffs[coeff.names] # this is to get them in the proper order
+  # var.coeffs = var.coeffs + base.value
+  level.names = substr(coeff.names, nchar(var.name) + 1, nchar(coeff.names))
+  coeff.table = data.frame("Name" = level.names, "Coeff" = var.coeffs)
+  # return(coeff.table)
+  #coeff.table %>% 
+  #  ggplot(aes(x = Name, y = Coeff)) + 
+  #  geom_bar(stat = "identity") + 
+  #  coord_flip() 
+  # do "April" not "MonthApril" 
+  # incorporate intercept to get rid of negatives
+}
+categ.vars = border.data %>% 
+  select(Port.Name, Month, Measure) %>%
+  names() # all categorical variables
+# for (var.name in categ.vars) {
+#   PlotCoeffs(var.name, m, border.data)
+# }
+ports <- PlotCoeffs("Port.Name", m, border.data)
+ports %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "Ports") +
+    coord_flip() 
+months <- PlotCoeffs("Month", m, border.data)
+months %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "Months") +
+    coord_flip() 
+trans <- PlotCoeffs("Measure", m, border.data)
+trans %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "Transportation Type") +
+    coord_flip() 
+states <- PlotCoeffs("State", m2, border.data, sort.vars = TRUE)
+states %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "States") +
+    coord_flip() 
+```
+
+## Analysis
+As we can see, the summer months in general are more popular on average (positive coefficient) for border crossings. In addition, the more way of crossing is by car (personal vehicles) and on foot (pedestrians). Based on the data, we can expect most border crossings to take place in California, Texas, or Michigan. 
+
+We have found the three most popular states for border crossings. However, this is still very broad. Next, we will refine our data and find out which ports at these three states are the most popular for border crossings.
+
+```{r state_plots}
+border.data.ca <- border.data %>%
+  filter(State == "CA")
+border.data.tx <- border.data %>%
+  filter(State == "TX")
+border.data.mi <- border.data %>%
+  filter(State == "MI")
+ca <- PlotCoeffs("Port.Name", m, border.data.ca)
+ca %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "California Ports") +
+    coord_flip() 
+tx <- PlotCoeffs("Port.Name", m, border.data.tx)
+tx %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "Texas Ports") +
+    coord_flip() 
+mi <- PlotCoeffs("Port.Name", m, border.data.mi)
+mi %>% 
+    ggplot(aes(x = Name, y = Coeff)) + 
+    geom_bar(stat = "identity") + 
+    labs(title = "Michigan Ports") +
+    coord_flip() 
+```
+
+The most popular ports of entry for California, Texas, and Michigan are San Ysidro, El Paso, and Detroit, respectively. 
+
+## Conclusion
+The key findings of this project are:
+<br />-the most popular months/season for border crossings is during the summer months: May, July, August
+<br />-the more popular form of transportation or crossing is either on foot as a pedestrian, or by personal vehicle (as either the driver or a passenger)
+<br />-the three most popular states where border corssings take place are: California, Texas, Michigan
+<br />-the top three ports of entry at the top three states are: San Ysidro, El Paso, and Detroit
